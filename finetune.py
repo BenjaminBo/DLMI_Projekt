@@ -14,6 +14,7 @@ class TimmFinetuner():
     Class that runs through a finetuning process on a model imported from the `timm`-module 
     and determined through the `config.model_name` parameter.
     TODO Test/evaluation functionality
+    TODO training log
     '''
     model:torch.nn.Module
     optimizer:torch.optim.Optimizer
