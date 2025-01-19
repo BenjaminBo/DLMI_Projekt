@@ -2,12 +2,14 @@
 This repository was developed with Python 3.10.16
 ## Install Cuda 11.8 
 Follow the steps from: https://developer.nvidia.com/cuda-11-8-0-download-archive
-## Install pytorch (for Cuda 11.8)
-Follow steps from: https://pytorch.org/get-started/locally/ .
-
-In case you use anaconda on windows:
+## Inatall dependencies
+### Conda
 ```
-conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+conda install --yes --file requirements.txt
+```
+### Pip
+```
+pip install -r requirements.txt
 ```
 # Dataset 
 ## Capsule Dataset
