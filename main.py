@@ -12,6 +12,7 @@ def finetune(model_name:str, dataset_name:Union[str, os.PathLike]):
     config = Config(model_name=model_name, 
                     model_num_classes=2, 
                     model_pretrained=True,
+                    model_freeze=True,
                     optim_name="SGD", 
                     optim_learning_rate=0.01, 
                     optim_weight_decay=0.001, 

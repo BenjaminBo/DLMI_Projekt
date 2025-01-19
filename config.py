@@ -45,6 +45,7 @@ class Config():
         self.model_name = model_name
         self.model_num_classes = model_num_classes
         self.model_pretrained = model_pretrained
+        self.model_freeze = model_freeze
 
         # Optimizer
         self.optim_name = optim_name
