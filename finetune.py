@@ -29,8 +29,9 @@ class TimmFinetuner():
         self.model = timm.create_model(model_name=config.model_name, 
                                        pretrained=config.model_pretrained) #instantiate model
         
-        for param in self.model.parameters():
-            param.requires_grad = False # freeze all parameters in model
+        if config.model_freeze:
+            for param in self.model.parameters():
+                param.requires_grad = False # freeze all parameters in model
 
         # create new model head that is trainable
         # TODO more flexible head

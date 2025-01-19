@@ -15,6 +15,7 @@ class Config():
     model_name:TimmModelOptions
     model_num_classes:int
     model_pretrained:bool
+    model_freeze:bool
 
     # Optimizer
     optim_name:OptimizerOptions
@@ -32,7 +33,7 @@ class Config():
     #Data
     data_root:Union[str, os.PathLike]
 
-    def __init__(self, model_name:TimmModelOptions, model_num_classes:int, model_pretrained:bool, 
+    def __init__(self, model_name:TimmModelOptions, model_num_classes:int, model_pretrained:bool, model_freeze:bool,
                  optim_name:OptimizerOptions, optim_learning_rate:float, optim_weight_decay:float, optim_momentum:Optional[float], 
                  loss_name:LossOptions, loss_class_weights:List[float],
                  loop_epochs:int,
