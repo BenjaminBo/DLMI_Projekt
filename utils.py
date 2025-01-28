@@ -1,12 +1,136 @@
-import os 
-import random
-from typing import List, Tuple, Union
 from typing_extensions import Literal
-import shutil
+import os
+from typing import List, Any, Union, Tuple, Dict
+import matplotlib.pyplot as plt
 from typeguard import typechecked
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_curve, roc_auc_score
+import torch
+from dataclasses import dataclass, field
+import seaborn as sns
+import random
+import shutil
+import logging 
 
-random.seed(10)
+'''Constants'''
+SEED = random.seed(10)
 CWD = os.path.dirname(os.path.realpath(__file__))
+PID = os.getpid()
+FORMATTER = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+LOGGER = logging.getLogger(f"{__name__}_{PID}")
+
+
+'''Functions'''
+@typechecked
+def setup_logger(name: str, log_file: Union[str, os.PathLike], level: int = logging.INFO) -> logging.Logger:
+    """To setup as many loggers as you want"""
+
+    handler = logging.FileHandler(log_file)        
+    handler.setFormatter(FORMATTER)
+
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(handler)
+
+    return logger
+
+'''Classes'''
+@typechecked
+@dataclass
+class ClassificationMetricsContainer():
+    preds:List[int] = field(default_factory=list)
+    gts:List[int] = field(default_factory=list)
+
+    def reset(self):
+        self.preds = []
+        self.gts = []
+
+    def append_pred_and_gt(self, pred:torch.Tensor, gt:torch.Tensor):
+        self.preds += pred.detach().numpy().tolist()
+        self.gts += gt.detach().numpy().tolist()
+
+    def compute_metrics(self):
+        metrics = {}
+        metrics["accuracy"] = accuracy_score(self.gts, self.preds)
+        metrics["precision"] = precision_score(self.gts, self.preds)
+        metrics["recall"] = recall_score(self.gts, self.preds)
+        metrics["f1"] = f1_score(self.gts, self.preds)
+        metrics["confusion_matrix"] = confusion_matrix(self.gts, self.preds)
+        fpr, tpr, threshold = roc_curve(self.gts, self.preds)
+        metrics["fpr"] = fpr
+        metrics["tpr"] = tpr
+        metrics["th"] = threshold
+        metrics["auc"] = roc_auc_score(self.gts, self.preds)
+        return metrics
+
+@typechecked
+class VisualizationUtils():
+    
+    @staticmethod
+    def plot_vs(metric_name: str, graphs_values: List[Any], graphs_names: List[str], savefig_path: Union[str, os.PathLike]):
+        plt.style.use("ggplot")
+        plt.figure()
+        for graph_values, graph_name in zip(graphs_values, graphs_names):
+            plt.plot(graph_values, label=f"{graph_name}")
+        plt.title(f"Training vs Validation: {metric_name}")
+        plt.xlabel("Epoch")
+        plt.ylabel(metric_name)
+        plt.legend(loc="upper right")
+        plt.savefig(savefig_path, format='png', dpi=600)
+        plt.close()
+    
+    def viz_confusion_matrix(cm, labels, savefig_path):
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=labels, yticklabels=labels)
+        plt.xlabel('Predicted Labels')
+        plt.ylabel('True Labels')
+        plt.title('Confusion Matrix')
+        plt.savefig(savefig_path, format='png', dpi=600)
+        plt.show()
+
+    def viz_roc(fpr, tpr, auc, savefig_path):
+        # Plot the ROC curves
+        plt.figure(figsize=(8, 6))
+        for i in range(len(fpr)):
+            plt.plot(fpr[i], tpr[i], lw=2, label=f'Class {i} (AUC = {auc:.2f})')
+
+        plt.plot([0, 1], [0, 1], 'k--', lw=2)  # Diagonal line
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('ROC Curve')
+        plt.legend(loc='lower right')
+        plt.grid()
+        plt.savefig(savefig_path, format='png', dpi=600)
+        plt.show()
+
+@typechecked
+class DatasetUtils():
+
+    @staticmethod
+    def get_labels(dataset_root:Union[str, os.PathLike]) -> Dict[str,int]:
+        foldernames = [os.path.basename(folder[0]) for folder in os.walk(dataset_root)]
+        foldernames = foldernames[1:] #os.walk(dataset_root) includes dataset_root as first entry. <- removes that first entry.
+        label_dict:Dict[str,int] = {}
+        for l in range(len(foldernames)):
+            label_dict[foldernames[l]] = l
+
+        return label_dict
+
+    @staticmethod
+    def compute_weights(dataset_root:Union[str, os.PathLike], labels_folders:List[str]) -> List[float]:
+        numbers_class_images:List[float] = [] # contains number of class occurences after first loop and class weights after second
+        total_number_of_imgs = 0
+        for folder in labels_folders:
+            imgs:List[str] = os.listdir(os.path.join(dataset_root, folder))
+            length = len(imgs)
+            LOGGER.info("{0}-class with {1} images\n (in {2})\n".format(folder, length, dataset_root))
+            numbers_class_images.append(float(length))
+            total_number_of_imgs += length
+            
+        
+        for n in range(len(numbers_class_images)):
+            numbers_class_images[n] = 1/(numbers_class_images[n]/total_number_of_imgs)
+        
+        return numbers_class_images
 
 @typechecked
 class DataPrepUtils():
@@ -25,10 +149,10 @@ class DataPrepUtils():
         return training, val, test
 
     @staticmethod
-    def copy_into_new_folder_structure(train_list:List, val_list:List, test_list:List, class_name:str, dataset_name:str="capsule_dataset"):
-        train_path = os.path.join(CWD, dataset_name, "train", class_name)
-        val_path = os.path.join(CWD, dataset_name, "val", class_name)
-        test_path = os.path.join(CWD, dataset_name, "test", class_name)
+    def copy_into_new_folder_structure(train_list:List, val_list:List, test_list:List, class_name:str, dataset_path:str):
+        train_path = os.path.join(dataset_path, "train", class_name)
+        val_path = os.path.join(dataset_path, "val", class_name)
+        test_path = os.path.join(dataset_path, "test", class_name)
         
         os.makedirs(train_path)
         os.makedirs(val_path)
@@ -45,17 +169,13 @@ class DataPrepUtils():
 
     @staticmethod
     def prep_capsule_dataset(root_folder:Union[str, os.PathLike]):
-        bleeding = [os.path.join(root_folder, "bleeding", file) for file in os.listdir(os.path.join(root_folder, "bleeding"))]
-        healthy = [os.path.join(root_folder, "healthy", file) for file in os.listdir(os.path.join(root_folder, "healthy"))]
+        for class_folder in os.walk(root_folder)[1:]:
+            img_path_list = [os.path.join(class_folder, file) for file in os.listdir(class_folder)]
 
-        random.shuffle(bleeding)
-        random.shuffle(healthy)
+            random.shuffle(img_path_list)
 
-        train, val, test = DataPrepUtils.split_class(bleeding)
-        DataPrepUtils.copy_into_new_folder_structure(train, val, test, "bleeding")
-
-        train, val, test = DataPrepUtils.split_class(healthy)
-        DataPrepUtils.copy_into_new_folder_structure(train, val, test, "healthy")
+            train, val, test = DataPrepUtils.split_class(img_path_list)
+            DataPrepUtils.copy_into_new_folder_structure(train, val, test, "bleeding", root_folder)
 
 TimmModelOptions = Literal[
     'aimv2_1b_patch14_224',
