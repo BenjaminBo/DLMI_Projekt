@@ -5,49 +5,32 @@ import glob
 from typing import List, Any
 import pandas as pd
 import scipy
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import classification_report
 from sklearn.linear_model import LogisticRegression
-from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.svm import SVC
-
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
-
-
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier
-
-
+import joblib
 # bleeding = 1, healthy = 0
 
 
-folder_bleeding = "data/train/bleeding"
-folder_healthy = "data/train/healthy"
+folder_bleeding = "project_capsule_dataset_for_classifiacation/project_capsule_dataset_for_classifiacation/train_equal_instances/bleeding"
+folder_healthy = "project_capsule_dataset_for_classifiacation/project_capsule_dataset_for_classifiacation/train_equal_instances/healthy"
 
-folder_test_healthy = "data/test/healthy"
-folder_test_bleeding = "data/test/bleeding"
+folder_test_healthy = "project_capsule_dataset_for_classifiacation/project_capsule_dataset_for_classifiacation/test/healthy"
+folder_test_bleeding = "project_capsule_dataset_for_classifiacation/project_capsule_dataset_for_classifiacation/test/bleeding"
 
-def load_images(folder_healthy, folder_bleeding):
+def load_images(folder_healthy:str, folder_bleeding:str):
     # get all images from folder
     healthy_images = [cv2.imread(file) for file in glob.glob(folder_healthy + "/*.jpg")]
     bleeding_images = [cv2.imread(file) for file in glob.glob(folder_bleeding + "/*.jpg")]
     return healthy_images, bleeding_images
-
-def image_analysis(healthy_images:List[Any], bleeding_images: List[Any]):
-    h_statistics_list_healthy = []
-    h_statistics_list_bleeding = []
-    [h_statistics_list_healthy.append(analyze_h_component_statistics(img)) for img in healthy_images]
-    [h_statistics_list_bleeding.append(analyze_h_component_statistics(img)) for img in bleeding_images]
-   
-    healthy_df = pd.DataFrame(h_statistics_list_healthy)
-    bleeding_df = pd.DataFrame(h_statistics_list_bleeding)
-    print(healthy_df.describe())
-    print(bleeding_df.describe())
-
 
 def build_data_matrix(healthy_images: List[Any], bleeding_images: List[Any]):
     x_healthy_features = []
@@ -67,52 +50,73 @@ def build_data_matrix(healthy_images: List[Any], bleeding_images: List[Any]):
     return np.concatenate((healthy_features_array, bleeding_features_array)), np.concatenate((healthy_labels, bleeding_labels))
 
 
-# extract h component
+def get_train_data():
+    healthy_images, bleeding_images = load_images(folder_healthy, folder_bleeding)
+    X, y = build_data_matrix(healthy_images, bleeding_images)
+    return X,y
+
+def get_test_data():
+    healthy_images_test, bleeding_images_test = load_images(folder_test_healthy, folder_test_bleeding)
+    X_test, y_test = build_data_matrix(healthy_images_test, bleeding_images_test)
+    return X_test, y_test
+   
 def extract_h_features(img):
     img_hsv =  cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     h = img_hsv[:, :, 0] # np.array
     return np.array([np.mean(h), np.median(h),scipy.stats.mode(h.flatten())[0], np.sum(h)])
    
-def test(folder_test_healthy, folder_test_bleeding, model):
-    # collect test data
-    healthy_images, bleeding_images = load_images(folder_test_healthy, folder_test_bleeding)
-    X_test, y_test = build_data_matrix(healthy_images, bleeding_images)
-    print(len(X_test))
+def test(model):
+    X_test, y_test = get_test_data()
     predictions = model.predict(X_test)
-    print("Accuracy:", accuracy_score(y_test, predictions))
     print(classification_report(y_test, predictions))
 
-def linear_regression():  
-    healthy_images, bleeding_images = load_images(folder_healthy, folder_bleeding)
-    X, y = build_data_matrix(healthy_images, bleeding_images)
-    #weighted_y = compute_sample_weight(class_weight="balanced", y=y)
-    model = LogisticRegression()
-    model.fit(X, y)
-    #model.fit(X,y, sample_weight=compute_class_weights(y))
-    #model.fit(X, weighted_y)
-    test(folder_test_healthy, folder_test_bleeding, model)
 
 def compute_class_weights(y):
     class_counts = np.bincount(y.astype(int))
     class_weights = {cls: 1.0 / count for cls, count in enumerate(class_counts)}
     sample_weights = np.array([class_weights[cls] for cls in y.astype(int)])
-
     return sample_weights
 
-def svm():
-    healthy_images, bleeding_images = load_images(folder_healthy, folder_bleeding)
-    X, y = build_data_matrix(healthy_images, bleeding_images)
+def create_model(name:str):
+    names = [
+        "nearest_neighbors",
+        "svm",
+        "gaussian_process",
+        "decision_tree",
+        "random_forest",
+        "neural_net",
+        "adaboost",
+        "naive_bayes",
+        "qda",
+        "logistic_regression",
+    ]
+    classifiers = [
+        KNeighborsClassifier(3),
+        SVC(gamma=2, C=1, random_state=42),
+        GaussianProcessClassifier(1.0 * RBF(1.0), random_state=42),
+        DecisionTreeClassifier(max_depth=5, random_state=42),
+        RandomForestClassifier(
+            max_depth=5, n_estimators=10, max_features=1, random_state=42
+        ),
+        MLPClassifier(alpha=1, max_iter=1000, random_state=42),
+        AdaBoostClassifier(random_state=42),
+        GaussianNB(),
+        QuadraticDiscriminantAnalysis(),
+        LogisticRegression()
+    ]
+    classifier_dict = dict(zip(names, classifiers))
+    X, y = get_train_data()
     print("built data matrix")
-    kernels = [ 'poly', 'sigmoid'] #'rbf',
-    for k in kernels:
-        print(f"using kernel {k}")
-        svm_model = SVC(kernel=k)
-        svm_model.fit(X, y)
-        print("fitted model")
-        test(folder_test_healthy, folder_test_bleeding, svm_model)
+    model = classifier_dict.get(name)
+    if model is None:
+        raise ValueError("Invalid model name")
+    model.fit(X, y)
+    print("fitted model")
+    test(model)
+    joblib.dump(model, f"{name}_baseline.pkl")
 
 
-def evaluate_classifiers():
+def evaluate_different_classifiers():
     names = [
         "Nearest Neighbors",
         "rbf SVM with C=0.025",
@@ -140,13 +144,17 @@ def evaluate_classifiers():
         GaussianNB(),
         QuadraticDiscriminantAnalysis(),
     ]
-    
-    healthy_images, bleeding_images = load_images(folder_healthy, folder_bleeding)
-    X, y = build_data_matrix(healthy_images, bleeding_images)
+    X, y = get_train_data()
     for name, clf in zip(names, classifiers):
         print(f"evaluating {name}")
         clf.fit(X, y)
-        test(folder_test_healthy, folder_test_bleeding, clf)
+        test(clf)
         print("--------------------------")
 
-evaluate_classifiers()
+def load_and_test(path_model):
+    model = joblib.load(path_model)
+    test(model)
+
+create_model("random_forest")
+print("created model")
+load_and_test("random_forest_baseline.pkl")

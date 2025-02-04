@@ -1,0 +1,141 @@
+evaluating Nearest Neighbors                                                                                                                         
+643
+Accuracy: 0.6080870917573873
+              precision    recall  f1-score   support
+
+         0.0       0.93      0.60      0.73       570
+         1.0       0.17      0.66      0.28        73
+
+    accuracy                           0.61       643
+   macro avg       0.55      0.63      0.50       643
+weighted avg       0.85      0.61      0.68       643
+
+--------------------------
+evaluating rbf SVM with C=0.025
+643
+Accuracy: 0.2643856920684292
+              precision    recall  f1-score   support
+
+         0.0       0.91      0.19      0.31       570
+         1.0       0.12      0.85      0.21        73
+
+    accuracy                           0.26       643
+   macro avg       0.51      0.52      0.26       643
+weighted avg       0.82      0.26      0.30       643
+
+--------------------------
+evaluating RBF SVM with C =1
+643
+Accuracy: 0.8895800933125972
+              precision    recall  f1-score   support
+
+         0.0       0.89      1.00      0.94       570
+         1.0       1.00      0.03      0.05        73
+
+    accuracy                           0.89       643
+   macro avg       0.94      0.51      0.50       643
+weighted avg       0.90      0.89      0.84       643
+
+--------------------------
+evaluating Gaussian Process
+643
+Accuracy: 0.8818040435458787
+              precision    recall  f1-score   support
+
+         0.0       0.89      0.99      0.94       570
+         1.0       0.36      0.05      0.10        73
+
+    accuracy                           0.88       643
+   macro avg       0.63      0.52      0.52       643
+weighted avg       0.83      0.88      0.84       643
+
+--------------------------
+evaluating Decision Tree
+643
+Accuracy: 0.7884914463452566
+              precision    recall  f1-score   support
+
+         0.0       0.93      0.82      0.87       570
+         1.0       0.28      0.53      0.36        73
+
+    accuracy                           0.79       643
+   macro avg       0.60      0.68      0.62       643
+weighted avg       0.86      0.79      0.82       643
+
+--------------------------
+evaluating Random Forest
+643
+Accuracy: 0.8258164852255054
+              precision    recall  f1-score   support
+
+         0.0       0.93      0.87      0.90       570
+         1.0       0.32      0.49      0.39        73
+
+    accuracy                           0.83       643
+   macro avg       0.63      0.68      0.64       643
+weighted avg       0.86      0.83      0.84       643
+
+--------------------------
+evaluating Neural Net
+643
+Accuracy: 0.8864696734059098
+C:\Users\leoni\anaconda3\envs\dlmi\Lib\site-packages\sklearn\metrics\_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+C:\Users\leoni\anaconda3\envs\dlmi\Lib\site-packages\sklearn\metrics\_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+C:\Users\leoni\anaconda3\envs\dlmi\Lib\site-packages\sklearn\metrics\_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+              precision    recall  f1-score   support
+
+         0.0       0.89      1.00      0.94       570
+         1.0       0.00      0.00      0.00        73
+
+    accuracy                           0.89       643
+   macro avg       0.44      0.50      0.47       643
+weighted avg       0.79      0.89      0.83       643
+
+--------------------------
+evaluating AdaBoost
+C:\Users\leoni\anaconda3\envs\dlmi\Lib\site-packages\sklearn\ensemble\_weight_boosting.py:527: FutureWarning: The SAMME.R algorithm (the default) is deprecated and will be removed in 1.6. Use the SAMME algorithm to circumvent this warning.
+  warnings.warn(
+643
+Accuracy: 0.7947122861586314
+              precision    recall  f1-score   support
+
+         0.0       0.93      0.83      0.88       570
+         1.0       0.28      0.52      0.37        73
+
+    accuracy                           0.79       643
+   macro avg       0.61      0.68      0.62       643
+weighted avg       0.86      0.79      0.82       643
+
+--------------------------
+evaluating Naive Bayes
+643
+Accuracy: 0.2286158631415241
+              precision    recall  f1-score   support
+
+         0.0       0.92      0.14      0.25       570
+         1.0       0.12      0.90      0.21        73
+
+    accuracy                           0.23       643
+   macro avg       0.52      0.52      0.23       643
+weighted avg       0.83      0.23      0.24       643
+
+--------------------------
+evaluating QDA
+C:\Users\leoni\anaconda3\envs\dlmi\Lib\site-packages\sklearn\discriminant_analysis.py:947: UserWarning: Variables are collinear
+  warnings.warn("Variables are collinear")
+643
+Accuracy: 0.24261275272161742
+              precision    recall  f1-score   support
+
+         0.0       0.95      0.15      0.27       570
+         1.0       0.12      0.93      0.22        73
+
+    accuracy                           0.24       643
+   macro avg       0.53      0.54      0.24       643
+weighted avg       0.85      0.24      0.26       643
+
+--------------------------
+PS C:\Users\leoni\gitrepos\DLMI_Projekt> 
