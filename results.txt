@@ -1,0 +1,146 @@
+evaluating Nearest Neighbors
+286
+Accuracy: 0.5909090909090909
+              precision    recall  f1-score   support
+
+         0.0       0.60      0.57      0.58       143
+         1.0       0.59      0.62      0.60       143
+
+    accuracy                           0.59       286
+   macro avg       0.59      0.59      0.59       286
+weighted avg       0.59      0.59      0.59       286
+
+--------------------------
+evaluating rbf SVM with C=0.025
+286
+Accuracy: 0.583916083916084
+              precision    recall  f1-score   support
+
+         0.0       0.64      0.38      0.48       143
+         1.0       0.56      0.78      0.65       143
+
+    accuracy                           0.58       286
+   macro avg       0.60      0.58      0.57       286
+weighted avg       0.60      0.58      0.57       286
+
+--------------------------
+evaluating RBF SVM with C =1
+286
+Accuracy: 0.5
+C:\Users\leoni\anaconda3\envs\dlmi\Lib\site-packages\sklearn\metrics\_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+C:\Users\leoni\anaconda3\envs\dlmi\Lib\site-packages\sklearn\metrics\_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+C:\Users\leoni\anaconda3\envs\dlmi\Lib\site-packages\sklearn\metrics\_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+              precision    recall  f1-score   support
+
+         0.0       0.50      1.00      0.67       143
+         1.0       0.00      0.00      0.00       143
+
+    accuracy                           0.50       286
+   macro avg       0.25      0.50      0.33       286
+weighted avg       0.25      0.50      0.33       286
+
+--------------------------
+evaluating Gaussian Process
+286
+Accuracy: 0.5
+              precision    recall  f1-score   support
+
+         0.0       0.50      0.99      0.67       143
+         1.0       0.50      0.01      0.01       143
+
+    accuracy                           0.50       286
+   macro avg       0.50      0.50      0.34       286
+weighted avg       0.50      0.50      0.34       286
+
+--------------------------
+evaluating Decision Tree
+286
+Accuracy: 0.6783216783216783
+              precision    recall  f1-score   support
+
+         0.0       0.63      0.86      0.73       143
+         1.0       0.78      0.50      0.61       143
+
+    accuracy                           0.68       286
+   macro avg       0.71      0.68      0.67       286
+weighted avg       0.71      0.68      0.67       286
+
+--------------------------
+evaluating Random Forest
+286
+Accuracy: 0.6818181818181818
+              precision    recall  f1-score   support
+
+         0.0       0.64      0.84      0.73       143
+         1.0       0.77      0.52      0.62       143
+
+    accuracy                           0.68       286
+   macro avg       0.70      0.68      0.67       286
+weighted avg       0.70      0.68      0.67       286
+
+--------------------------
+evaluating Neural Net
+286
+Accuracy: 0.5
+C:\Users\leoni\anaconda3\envs\dlmi\Lib\site-packages\sklearn\metrics\_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+C:\Users\leoni\anaconda3\envs\dlmi\Lib\site-packages\sklearn\metrics\_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+C:\Users\leoni\anaconda3\envs\dlmi\Lib\site-packages\sklearn\metrics\_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+              precision    recall  f1-score   support
+
+         0.0       0.50      1.00      0.67       143
+         1.0       0.00      0.00      0.00       143
+
+    accuracy                           0.50       286
+   macro avg       0.25      0.50      0.33       286
+weighted avg       0.25      0.50      0.33       286
+
+--------------------------
+evaluating AdaBoost
+C:\Users\leoni\anaconda3\envs\dlmi\Lib\site-packages\sklearn\ensemble\_weight_boosting.py:527: FutureWarning: The SAMME.R algorithm (the default) is deprecated and will be removed in 1.6. Use the SAMME algorithm to circumvent this warning.
+  warnings.warn(
+286
+Accuracy: 0.6958041958041958
+              precision    recall  f1-score   support
+
+         0.0       0.69      0.70      0.70       143
+         1.0       0.70      0.69      0.69       143
+
+    accuracy                           0.70       286
+   macro avg       0.70      0.70      0.70       286
+weighted avg       0.70      0.70      0.70       286
+
+--------------------------
+evaluating Naive Bayes
+286
+Accuracy: 0.5979020979020979
+              precision    recall  f1-score   support
+
+         0.0       0.64      0.45      0.53       143
+         1.0       0.58      0.75      0.65       143
+
+    accuracy                           0.60       286
+   macro avg       0.61      0.60      0.59       286
+weighted avg       0.61      0.60      0.59       286
+
+--------------------------
+evaluating QDA
+r
+  warnings.warn("Variables are collinear")
+286
+Accuracy: 0.5944055944055944
+              precision    recall  f1-score   support
+
+         0.0       0.63      0.45      0.53       143
+         1.0       0.57      0.73      0.64       143
+
+    accuracy                           0.59       286
+   macro avg       0.60      0.59      0.59       286
+weighted avg       0.60      0.59      0.59       286
+
+--------------------------
