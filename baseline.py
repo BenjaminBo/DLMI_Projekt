@@ -151,10 +151,13 @@ def evaluate_different_classifiers():
         test(clf)
         print("--------------------------")
 
+
 def load_and_test(path_model):
     model = joblib.load(path_model)
     test(model)
 
-create_model("random_forest")
-print("created model")
-load_and_test("random_forest_baseline.pkl")
+
+if __name__ == "__main__":
+    create_model("random_forest")
+    print("created model")
+    load_and_test("random_forest_baseline.pkl")
