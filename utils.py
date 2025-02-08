@@ -10,6 +10,8 @@ import seaborn as sns
 import random
 import shutil
 import logging 
+from sys import maxsize
+import pandas as pd
 
 '''Constants'''
 SEED = random.seed(10)
@@ -105,6 +107,7 @@ class VisualizationUtils():
 @typechecked
 class DatasetUtils():
 
+    @typechecked
     @staticmethod
     def get_labels(dataset_root:Union[str, os.PathLike]) -> Dict[str,int]:
         foldernames = [os.path.basename(folder[0]) for folder in os.walk(dataset_root)]
@@ -134,7 +137,28 @@ class DatasetUtils():
 
 @typechecked
 class DataPrepUtils():
-    
+
+    @staticmethod
+    def equalize_classes(dataset_root:Union[os.PathLike, str]):
+        class_folders = [f for f in os.walk(dataset_root)]
+
+        def get_max_amount_of_instances_and_folder_lists() -> Tuple[int, Dict[str,List[Union[os.PathLike, str]]]]:
+            max_amount_of_instances = maxsize
+            dict_of_listed_folders:Dict[str,List[Union[os.PathLike, str]]] = {}
+            for folder in class_folders[1:]:
+                listed = [os.path.join(folder[0], file) for file in folder[2]]
+                if len(listed) < max_amount_of_instances:
+                    max_amount_of_instances = len(listed)
+                random.shuffle(listed)
+                dict_of_listed_folders[os.path.basename(folder[0])] = listed
+            return max_amount_of_instances, dict_of_listed_folders
+        
+        max_n, dict_of_listed_folders = get_max_amount_of_instances_and_folder_lists()
+        for class_name in dict_of_listed_folders.keys():
+            datalist = dict_of_listed_folders[class_name][:max_n]
+            DataPrepUtils.copy_into_new_folder_structure(data_list=datalist,
+                                                         new_data_path=os.path.join(dataset_root+"_equal_instances", class_name))
+
     @staticmethod
     def split_class(data_list:List, training_to_test_ratio:float=0.9, training_to_val_ratio:float=0.8) -> Tuple[List, List, List]:
         train_val = data_list[:int(training_to_test_ratio*(len(data_list)-1))] #train+val
@@ -149,33 +173,36 @@ class DataPrepUtils():
         return training, val, test
 
     @staticmethod
-    def copy_into_new_folder_structure(train_list:List, val_list:List, test_list:List, class_name:str, dataset_path:str):
-        train_path = os.path.join(dataset_path, "train", class_name)
-        val_path = os.path.join(dataset_path, "val", class_name)
-        test_path = os.path.join(dataset_path, "test", class_name)
+    def copy_into_new_folder_structure(data_list:List, new_data_path:Union[os.PathLike, str]):
         
-        os.makedirs(train_path)
-        os.makedirs(val_path)
-        os.makedirs(test_path)
+        os.makedirs(new_data_path) #create new path
 
-        for train_file in train_list:
-            shutil.copy(train_file, train_path)
-
-        for val_file in val_list:
-            shutil.copy(val_file, val_path)
-
-        for test_file in test_list:
-            shutil.copy(test_file, test_path)
+        for file in data_list: #copy files
+            shutil.copy(file, new_data_path)
 
     @staticmethod
-    def prep_capsule_dataset(root_folder:Union[str, os.PathLike]):
-        for class_folder in os.walk(root_folder)[1:]:
-            img_path_list = [os.path.join(class_folder, file) for file in os.listdir(class_folder)]
-
+    def dataset_with_classfolders(root_folder:Union[str, os.PathLike]):
+        LOGGER.info("Copying {0} into new folderstructure.".format(root_folder))
+        class_folders = [f for f in os.walk(root_folder)]
+        for class_folder in class_folders[1:]:
+            class_name = os.path.basename(class_folder[0])
+            LOGGER.info(" Handling {0}-class".format(class_name))
+            img_path_list = [os.path.join(class_folder[0], file) for file in class_folder[2]]
+            LOGGER.info("  Contains {0} instances".format(len(img_path_list)))
             random.shuffle(img_path_list)
-
+            LOGGER.info("  shuffling...")
             train, val, test = DataPrepUtils.split_class(img_path_list)
-            DataPrepUtils.copy_into_new_folder_structure(train, val, test, "bleeding", root_folder)
+            LOGGER.info("  Train-split contains {0} instances.\n  Val-split contains {1} instances.\n  Test-split contains {2} instances.".format(len(train), len(val), len(test)))
+
+            DataPrepUtils.copy_into_new_folder_structure(data_list=train, 
+                                                         new_data_path = os.path.join(root_folder+"_for_classifiacation", "train", class_name))
+            LOGGER.info("  Copying train-split into {0}".format(os.path.join(root_folder+"_for_classifiacation", "train", class_name)))
+            DataPrepUtils.copy_into_new_folder_structure(data_list=val, 
+                                                         new_data_path = os.path.join(root_folder+"_for_classifiacation", "val", class_name))
+            LOGGER.info("  Copying val-split into {0}".format(os.path.join(root_folder+"_for_classifiacation", "val", class_name)))
+            DataPrepUtils.copy_into_new_folder_structure(data_list=test, 
+                                                         new_data_path = os.path.join(root_folder+"_for_classifiacation", "test", class_name))
+            LOGGER.info("  Copying test-split into {0}".format(os.path.join(root_folder+"_for_classifiacation", "test", class_name)))
 
 TimmModelOptions = Literal[
     'aimv2_1b_patch14_224',
