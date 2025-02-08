@@ -1,27 +1,28 @@
 import timm.data
-import collections.abc
-from torch import Tensor, LongTensor, cuda
-from typing import Tuple
+from typing import Tuple, Union, Dict, Optional
 import torchvision.transforms as T
 import torchvision.transforms.functional as F
 from torchvision.utils import save_image
 import random
 from typeguard import typechecked
-from PIL.Image import Image
 from utils import CWD, os
+import numpy as np
+from PIL import Image
+
+Loader = Union[timm.data.loader.PrefetchLoader]
 
 random.seed(10)
 
 @typechecked
-class Dataloader(timm.data.dataset.ImageDataset):
+class Dataset(timm.data.dataset.ImageDataset):
 
-    def __init__(self, root, reader=None, split='train', class_map=None, load_bytes=False, input_img_mode='RGB', transform=None, target_transform=None, augmentation_prob:float=1.0, visualize:bool=False, **kwargs):
+    def __init__(self, root, reader=None, split='train', class_map=None, load_bytes=False, input_img_mode='RGB', transform=None, target_transform=None, augmentation_prob:float=0.0, visualize:bool=False, **kwargs):
         super().__init__(root, reader, split, class_map, load_bytes, input_img_mode, transform, target_transform, **kwargs)
         self.augmentation_prob = augmentation_prob
         self.visualize = visualize
         self.viz_counter = 0
 
-    def _live_augemtation(self, model_input:Image) -> Tensor:
+    def _live_augemtation(self, model_input):# -> Image:
         '''
         8 augmentations
         '''
@@ -53,9 +54,9 @@ class Dataloader(timm.data.dataset.ImageDataset):
             model_input = F.vflip(model_input)
 
         ## ColorJitter
-        p = random.random()
-        if p < self.augmentation_prob:
-            Transform.append(T.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.3))
+        # p = random.random()
+        # if p < self.augmentation_prob:
+        #     Transform.append(T.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.3))
         
         ## GaussianBlur
         p = random.random()
@@ -63,10 +64,10 @@ class Dataloader(timm.data.dataset.ImageDataset):
             Transform.append(T.GaussianBlur(11, (0.1, 5)))
 
         ## RandomPosterize
-        p = random.random()
-        if p < self.augmentation_prob:
-            bits = random.randint(1,7) 
-            Transform.append(T.RandomPosterize(bits, 1))
+        # p = random.random()
+        # if p < self.augmentation_prob:
+        #     bits = random.randint(1,7) 
+        #     Transform.append(T.RandomPosterize(bits, 1))
 
         ## RandomEqualize
         p = random.random()
@@ -78,9 +79,8 @@ class Dataloader(timm.data.dataset.ImageDataset):
         #RandomAutocontrast
 
         # apply transformations 
-        Transform.append(T.ToTensor())
         Transform = T.Compose(Transform)
-        model_input:Tensor = Transform(model_input)
+        model_input = Transform(model_input)
 
         if self.visualize:
             path = os.path.join(CWD, "augmentation_visualization")
@@ -88,19 +88,30 @@ class Dataloader(timm.data.dataset.ImageDataset):
             save_image(model_input, os.path.join(path, f"{str(self.viz_counter)}.png"))
             self.viz_counter += 1
 
+        # model_input = np.array(model_input)
+
         return model_input
 
-    def __getitem__(self, index) -> Tuple[Tensor, Tensor]:
+    def __getitem__(self, index):# -> Tuple[Image.Image, int]:
         model_input, target = super().__getitem__(index)
 
         model_input = self._live_augemtation(model_input=model_input)
 
-        # Format image to model input in tensors
-        model_input = model_input.float() # make sure tensor type is float
-        model_input = model_input.unsqueeze(0) if len(model_input.shape) < 4 else model_input
+        # if type(model_input) == np.ndarray:
+        #     model_input = Image.fromarray(model_input.astype('uint8'), 'RGB')
 
-        # Format classes to tensors
-        gt_class = [target] if not(isinstance(target, collections.abc.Sequence)) else target
-        gt_class = Tensor(gt_class).type(LongTensor)
-
-        return model_input, gt_class
+        return model_input, target
+        
+@typechecked
+def get_dataloader_from_dataset(root:Union[str, os.PathLike], class_map:Dict[str, int], batch_size:int,
+                                augmentation_prob:float=0.0, visualize:bool=False, input_size:Optional[Union[int, Tuple[int, int], Tuple[int, int, int]]]=None) -> Loader:
+    dataset = Dataset(root=root, 
+                      augmentation_prob=augmentation_prob, 
+                      visualize=visualize, 
+                      class_map=class_map)
+    if input_size is None:
+        input_size = (3, dataset[0][0].size[0], dataset[0][0].size[1])
+    dataloader = timm.data.create_loader(dataset=dataset,
+                                         input_size=input_size,
+                                         batch_size=batch_size)
+    return dataloader

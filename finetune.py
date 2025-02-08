@@ -1,9 +1,9 @@
 import torch 
 import timm
-from config import Config
+from config import Config, LossOptions
 from typeguard import typechecked
 import os
-from dataloader import Dataloader
+from dataloader import get_dataloader_from_dataset, Loader
 from utils import PID, VisualizationUtils, ClassificationMetricsContainer, DatasetUtils, setup_logger
 import datetime
 from typing import Union, Tuple, Dict
@@ -19,13 +19,12 @@ class TimmFinetuner():
     '''
     model:torch.nn.Module
     optimizer:torch.optim.Optimizer
-    loss_name:str
+    loss_name:LossOptions
     criterion:torch.nn.Module
     current_best_loss:float=float('inf')
     epochs:int
-    train_set:Dataloader
-    val_set:Dataloader
-    test_set:Dataloader
+    train_set:Loader
+    val_set:Loader
     checkpoint_name:str
     model_dir:Union[str, os.PathLike]
     complete_path:Union[str, os.PathLike]
@@ -42,11 +41,11 @@ class TimmFinetuner():
         self.training_log_path = os.path.join(self.model_dir,'training_log.csv')
         os.makedirs(self.model_dir, exist_ok=True)
 
-        ################################# setting up logger #################################
+        ################################# Finetune Logger #################################
         self.__LOGGER__ = setup_logger(name= f"{__name__}_{config.model_name}_{PID}", 
                                        log_file= os.path.join(self.model_dir, f"{config.model_name}_training.log"), 
                                        level= logging.DEBUG)
-        self.__LOGGER__.info("Instantiating Timm Finetuner")
+        self.__LOGGER__.info("Instantiating Timm Finetuner with config: {0}".format(config.__dict__))
 
         # csv keeping track of training- and validation-loss and -metrics.
         with open(self.training_log_path, 'a', encoding='utf-8', newline='') as f:
@@ -62,14 +61,14 @@ class TimmFinetuner():
             self.__LOGGER__.info("Downloading pretrained weights...") 
         self.model = timm.create_model(model_name=config.model_name, 
                                        pretrained=config.model_pretrained) #instantiate model
-        # if torch.cuda.is_available():
-        #     self.model = self.model.cuda()
 
         if config.model_freeze:
             self.__LOGGER__.info("Freezing all prameters.")
             # freeze all parameters in model
             for param in self.model.parameters():
                 param.requires_grad = False 
+        else: 
+            self.__LOGGER__.info("Parameters will NOT be frozen")
 
         # create new model head that is trainable
         # TODO more flexible head
@@ -83,6 +82,9 @@ class TimmFinetuner():
         else:
             raise AttributeError("Expected the model to have one of the following attributes as final model layer:\n {0}.\n \
                                  Since it doesn't, the model head can not be eschanged and not e trained.".format(["fc", "classifier"]))
+        
+        if torch.cuda.is_available(): # move to gpu if available
+            self.model = self.model.cuda()
 
         self.__LOGGER__.info(self.model)
 
@@ -101,7 +103,10 @@ class TimmFinetuner():
         ################################# Data #################################
         self.__LOGGER__.info("Setting up data:")
 
-        train_root = os.path.join(config.data_root, "train")
+        if config.data_equal_instances:
+            train_root = os.path.join(config.data_root, "train_equal_instances")
+        else:
+            train_root = os.path.join(config.data_root, "train")
 
         #Mapping indexes to class labels
         self.class_to_index  = DatasetUtils.get_labels(train_root)
@@ -111,15 +116,17 @@ class TimmFinetuner():
         
 
         #Training data
-        self.train_set = Dataloader(root=train_root, 
-                                    augmentation_prob=config.augmentation_prob, 
-                                    visualize=config.augmentation_viz, 
-                                    class_map=self.class_to_index)
+        self.train_set = get_dataloader_from_dataset(root=train_root,
+                                                     augmentation_prob=config.augmentation_prob,
+                                                     class_map=self.class_to_index,
+                                                     batch_size=config.data_batch_size,
+                                                     input_size=config.data_input_size)
         self.__LOGGER__.info(" Training data: {0}".format(len(self.train_set)))
 
         #Validation data
-        self.val_set = Dataloader(root=os.path.join(config.data_root, "val"),
-                                  class_map=self.class_to_index)
+        self.val_set = get_dataloader_from_dataset(root=os.path.join(config.data_root, "val"),
+                                                   class_map=self.class_to_index,
+                                                   batch_size=config.data_batch_size)
         self.__LOGGER__.info(" Validation data: {0}".format(len(self.val_set)))
 
         ################################# Loss #################################
@@ -144,6 +151,9 @@ class TimmFinetuner():
         if self.loss_name == "CrossEntropyLoss":
             self.criterion = torch.nn.CrossEntropyLoss(weight=weights,
                                                        reduction='mean')
+        if self.loss_name == "BCELoss":
+            self.criterion = torch.nn.BCELoss(reduction='mean', 
+                                              weight=weights)
         elif self.loss_name == "MSELoss":
             self.criterion = torch.nn.MSELoss()
 
@@ -151,7 +161,7 @@ class TimmFinetuner():
         self.epochs = config.loop_epochs
         self.metrics = ClassificationMetricsContainer()
 
-    def _single_epoch_loop(self, dataset:Dataloader, backpropagate:bool=False) -> Tuple[float, dict]:
+    def _single_epoch_loop(self, dataloader:Loader, backpropagate:bool=False) -> Tuple[float, dict]:
         '''
         Implements the generic loop for a model, during training, cross validation or testing.
         ## Computes in every case:
@@ -164,21 +174,35 @@ class TimmFinetuner():
         6. `self.optimizer.step()`.
         for parameter optimization (should not be `True` when validating or testing).
 
-        :param dataset:
+        :param dataloader:
         :param backpropagate:
         :return: 
         '''
         epoch_loss = 0.0
         batch_loss = 0.0
-        for model_input, gt_class in dataset: # loop over batch 
+        for model_input, gt_class in dataloader: # loop over batch 
             # device = self.model.device
             model_output = self.model(model_input) # forwards pass; compute output class prediction from model
 
             # determine prediction
-            class_probabilities = torch.nn.functional.softmax(model_output, dim=1) # formulate model output to class probabilies using softmax as final activation.
-            predicted_class = torch.argmax(class_probabilities).int().unsqueeze(0) # extract class prediction from probabilities.
+            class_probabilities = torch.nn.functional.softmax(model_output, dim=1) # formulate model output to class probabilities using softmax as final activation.
+            predicted_class = torch.argmax(class_probabilities, dim=1).int().cpu()#.unsqueeze(0) # extract class prediction from probabilities.
             
-            batch_loss = self.criterion(class_probabilities, gt_class) # pass batch class probabbilities and batch ground truth to criterion which computes batch loss.
+            class_probabilities = class_probabilities.cpu()
+            gt_class = gt_class.cpu()
+
+            if self.loss_name == "CrossEntropyLoss": 
+                predicted_class = torch.argmax(class_probabilities, dim=1).int()
+                batch_loss = self.criterion(class_probabilities, gt_class) # pass batch class probabbilities and batch ground truth to criterion which computes batch loss.
+            # elif self.loss_name == "BCELoss":
+            #     #TODO
+            #     batch_loss = self.criterion(class_probabilities, gt_class)
+            #     predicted_class = torch.argmax(class_probabilities, dim=1).int()
+            # elif self.loss_name == "MSELoss":
+            #     # TODO
+            #     predicted_class = predicted_class.float()
+            #     batch_loss = self.criterion(predicted_class, gt_class)
+
             epoch_loss += batch_loss.item() # add up loss per batch to get overall epoch loss.
 
             self.metrics.append_pred_and_gt(predicted_class, gt_class) # pass predicted class and gt class to metric computation
@@ -186,11 +210,11 @@ class TimmFinetuner():
             if backpropagate:
                 # backpropatgation. 
                 # Should only be true for training section of an epoch.
-                self.model.zero_grad()
+                self.model.zero_grad(set_to_none=True)
                 batch_loss.backward()
                 self.optimizer.step()
 
-        epoch_loss = epoch_loss/len(dataset) # normalize loss over batch TODO actually normalize over batch. This only works because batch=1 for now.
+        epoch_loss = epoch_loss/len(dataloader) # normalize loss over batch (len(dataloader) respects the batchsize)
         metrics = self.metrics.compute_metrics() # compute metrics from predictions and ground truths that have been passed.
         self.metrics.reset() # reset metric computation for further use.
 
@@ -207,7 +231,7 @@ class TimmFinetuner():
         '''      
         self.__LOGGER__.info("Training Loop...")
         self.model.train() # set mode to training mode
-        train_epoch_loss, metrics = self._single_epoch_loop(dataset=self.train_set, 
+        train_epoch_loss, metrics = self._single_epoch_loop(dataloader=self.train_set, 
                                                             backpropagate=True) # call function with training-data and set flag to true that allows it to compute backpropagation.
         self.__LOGGER__.info("    Training {0}: {1}".format(self.loss_name, train_epoch_loss))# log loss
         
@@ -222,8 +246,8 @@ class TimmFinetuner():
         '''
         self.__LOGGER__.info("Validation loop...")
         self.model.eval() # set model to evalutation mode
-        val_epoch_loss, metrics = self._single_epoch_loop(dataset=self.val_set,
-                                                          backpropagate=False) #call function with validation-dataset and without allowing it to compute backpropagation.
+        val_epoch_loss, metrics = self._single_epoch_loop(dataloader=self.val_set,
+                                                          backpropagate=False) #call function with validation-dataloader and without allowing it to compute backpropagation.
         self.__LOGGER__.info("    Validation {0}: {1}\n".format(self.loss_name, val_epoch_loss)) # log loss
 
         return val_epoch_loss, metrics
