@@ -34,9 +34,9 @@ def load_images(folder_healthy:str, folder_bleeding:str):
 
 def build_data_matrix(healthy_images: List[Any], bleeding_images: List[Any]):
     x_healthy_features = []
-    if len(healthy_images) > 570:
-        healthy_images = healthy_images[:570]
-    for idx, img in enumerate(healthy_images[:570]):
+    #if len(healthy_images) > 570:
+       # healthy_images = healthy_images[:570]
+    for idx, img in enumerate(healthy_images):
         x_healthy_features.append([extract_h_features(img)])# np.array
     healthy_features_array = np.concatenate(x_healthy_features)
     healthy_labels = np.zeros(healthy_features_array.shape[0])
