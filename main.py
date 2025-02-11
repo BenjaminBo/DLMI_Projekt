@@ -1,10 +1,10 @@
-from config import Config
+from config import Config, create_config_list, TimmModelOptions
 import os 
 os.environ["CUDA_VISIBLE_DEVICES"] = "7"
 
 from finetune import TimmFinetuner
 from utils import CWD, DataPrepUtils
-from typing import Union
+from typing import Union, List
 import argparse
 import datetime
 import logging
@@ -31,25 +31,17 @@ def equalize_class_instances_dataset(dataset_path:Union[os.PathLike, str]):
     DataPrepUtils.equalize_classes(dataset_root=dataset_path)
 
 def finetune(model_name:str, dataset_name:Union[str, os.PathLike]):
-    config = Config(model_name = model_name,
-                    model_num_classes=2, 
-                    model_pretrained=True,
-                    model_freeze=False,
-                    model_save_path = os.path.join(CWD, "models", str(datetime.datetime.now().date())),
-                    optim_name="Adam", 
-                    optim_learning_rate=0.005, 
-                    optim_weight_decay=0.001, 
-                    optim_momentum=0.9,
-                    loss_name="CrossEntropyLoss", 
-                    loss_compute_class_weights=True,
-                    loop_epochs=200,
-                    data_root=os.path.join(CWD, dataset_name) if not(os.sep in dataset_name) else dataset_name,
-                    data_batch_size=1,
-                    data_equal_instances=True,
-                    augmentation_prob=0.0,
-                    augmentation_viz=True)
-    tf = TimmFinetuner(config=config)
-    tf.training_loop()
+    model_names:List[TimmModelOptions] = ["resnet101"]
+    configs:List[Config] = create_config_list(data_root=os.path.join(CWD, dataset_name) if not(os.sep in dataset_name) else dataset_name,
+                                              augmentation_prob = [0.8, 0.0],
+                                              data_equal_instances = [False, True],
+                                              model_name=model_names)
+    for config in configs:
+        # try:
+        tf = TimmFinetuner(config=config)
+        tf.training_loop()
+        # except Exception as e:
+        #     LOGGER.info("Config {0} throws the following exception:\n{1}".format(config.__dict__, e))
 
 ''' Arguments '''
 parser = argparse.ArgumentParser(description = 'Main')

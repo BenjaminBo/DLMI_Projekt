@@ -46,9 +46,9 @@ class ClassificationMetricsContainer():
         self.preds = []
         self.gts = []
 
-    def append_pred_and_gt(self, pred:torch.Tensor, gt:torch.Tensor):
-        self.preds += pred.detach().numpy().tolist()
-        self.gts += gt.detach().numpy().tolist()
+    def append_pred_and_gt(self, pred:list, gt:list):
+        self.preds += pred
+        self.gts += gt
 
     def compute_metrics(self):
         metrics = {}

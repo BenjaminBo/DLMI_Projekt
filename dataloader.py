@@ -8,6 +8,9 @@ from typeguard import typechecked
 from utils import CWD, os
 import numpy as np
 from PIL import Image
+from config import Config
+import collections.abc
+import torch
 
 Loader = Union[timm.data.loader.PrefetchLoader]
 
@@ -16,10 +19,14 @@ random.seed(10)
 @typechecked
 class Dataset(timm.data.dataset.ImageDataset):
 
-    def __init__(self, root, reader=None, split='train', class_map=None, load_bytes=False, input_img_mode='RGB', transform=None, target_transform=None, augmentation_prob:float=0.0, visualize:bool=False, **kwargs):
+    def __init__(self, root, augmentation_prob:float, augmentation_viz:bool, in_loader:bool,
+                 reader=None, split='train', class_map=None, load_bytes=False, input_img_mode='RGB', transform=None, target_transform=None, **kwargs):
         super().__init__(root, reader, split, class_map, load_bytes, input_img_mode, transform, target_transform, **kwargs)
+
         self.augmentation_prob = augmentation_prob
-        self.visualize = visualize
+        self.visualize = augmentation_viz
+        self.in_loader = in_loader
+
         self.viz_counter = 0
 
     def _live_augemtation(self, model_input):# -> Image:
@@ -53,10 +60,10 @@ class Dataset(timm.data.dataset.ImageDataset):
         if p < self.augmentation_prob:
             model_input = F.vflip(model_input)
 
-        ## ColorJitter
+        # # ColorJitter
         # p = random.random()
         # if p < self.augmentation_prob:
-        #     Transform.append(T.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.3))
+        #     Transform.append(T.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.2, hue=0.0))
         
         ## GaussianBlur
         p = random.random()
@@ -79,6 +86,7 @@ class Dataset(timm.data.dataset.ImageDataset):
         #RandomAutocontrast
 
         # apply transformations 
+        Transform.append(T.ToTensor())
         Transform = T.Compose(Transform)
         model_input = Transform(model_input)
 
@@ -93,14 +101,25 @@ class Dataset(timm.data.dataset.ImageDataset):
         return model_input
 
     def __getitem__(self, index):# -> Tuple[Image.Image, int]:
-        model_input, target = super().__getitem__(index)
+        model_input, gt_class = super().__getitem__(index)
+        filename = os.path.basename(self.reader.samples[index][0])
 
-        model_input = self._live_augemtation(model_input=model_input)
+        if not(self.in_loader):
+            model_input = self._live_augemtation(model_input=model_input)
 
-        # if type(model_input) == np.ndarray:
-        #     model_input = Image.fromarray(model_input.astype('uint8'), 'RGB')
+            model_input = model_input.float()
+            model_input = model_input.unsqueeze(0) if len(model_input.shape) < 4 else model_input
 
-        return model_input, target
+            gt_class = [gt_class] if not(isinstance(gt_class, collections.abc.Sequence)) else gt_class
+            gt_class = torch.Tensor(gt_class).type(torch.LongTensor)
+
+            filename = [filename] #if not(isinstance(filename, collections.abc.Sequence)) else filename
+
+            if torch.cuda.is_available(): # move to gpu if available
+                model_input = model_input.cuda()
+                gt_class = gt_class.cuda()
+
+        return model_input, gt_class, filename
         
 @typechecked
 def get_dataloader_from_dataset(root:Union[str, os.PathLike], class_map:Dict[str, int], batch_size:int,
@@ -108,7 +127,8 @@ def get_dataloader_from_dataset(root:Union[str, os.PathLike], class_map:Dict[str
     dataset = Dataset(root=root, 
                       augmentation_prob=augmentation_prob, 
                       visualize=visualize, 
-                      class_map=class_map)
+                      class_map=class_map,
+                      in_loader=True)
     if input_size is None:
         input_size = (3, dataset[0][0].size[0], dataset[0][0].size[1])
     dataloader = timm.data.create_loader(dataset=dataset,
