@@ -18,14 +18,9 @@ This repository was trained on a subset of the **SEEE-AI** dataset
 - Original: https://www.kaggle.com/datasets/capsuleyolo/kyucapsule
 # Usage
 ## Data Prep
-Prepares the given dataset to a readable format for the models.
-
+Given a dataset that contains folders of class instances, this function splits the instances into train, validation and test set.
 ```
 python main.py prep_data -r path_to_datase_root 
-```
-### Default values
-```
--r: './project_capsule_dataset'
 ```
 
 ## Finetune model
@@ -35,8 +30,4 @@ Loads a model - through a given model name - and it's pretrained parameters. It 
 python main.py finetune -m model_name -d dataset_name/_path
 ```
 
-### Default values
-```
--m: "mobilenetv3_small_050"
--d: "capsule_dataset"
-```
+Acceptable model names can be seen in `utils.py`, in `TimmModelOptions`.
