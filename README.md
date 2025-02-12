@@ -5,7 +5,7 @@ Follow the steps from: https://developer.nvidia.com/cuda-11-8-0-download-archive
 ## Inatall dependencies
 ### Conda
 ```
-conda install --yes --file requirements.txt
+conda env create -n dlmi_project -f requirements.yaml
 ```
 ### Pip
 ```

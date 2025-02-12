@@ -3,7 +3,7 @@ import timm
 from config import Config, LossOptions
 from typeguard import typechecked
 import os
-from dataset import Dataset, get_dataloader_from_dataset, Loader
+from dataloader import Dataset, get_dataloader_from_dataset, Loader
 from utils import PID, VisualizationUtils, ClassificationMetricsContainer, DatasetUtils, setup_logger
 import datetime
 from typing import Union, Tuple, Dict

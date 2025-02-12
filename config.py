@@ -19,7 +19,7 @@ class Config():
     model_name:TimmModelOptions = "resnet101"
     model_num_classes:int = 2
     model_pretrained:bool = True
-    model_freeze:bool = False
+    model_freeze:bool = True
     model_save_path:Union[str, os.PathLike] = os.path.join(CWD, "models", str(datetime.datetime.now().date()))
 
     # Optimizer
